@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FRS SmartScore</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --card: #fff; --text: #1d2433; --muted: #6b7385; --border: #dfe3ea;
+    --brand: #2754c5; --ok: #1b8a4b; --warn: #b7791f; --bad: #c53030;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--brand); color: #fff; padding: 16px 24px; }
+  header h1 { margin: 0; font-size: 20px; }
+  header p { margin: 4px 0 0; opacity: .85; font-size: 13px; }
+  main { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+  .uploads { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .uploads { grid-template-columns: 1fr; } }
+  .drop { background: var(--card); border: 2px dashed var(--border); border-radius: 12px; padding: 16px; text-align: center;
+          cursor: pointer; min-height: 260px; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: border-color .15s; }
+  .drop:hover, .drop.over { border-color: var(--brand); }
+  .drop h3 { margin: 0 0 4px; font-size: 15px; }
+  .drop small { color: var(--muted); }
+  .drop img { max-width: 100%; max-height: 220px; border-radius: 8px; margin-top: 10px; }
+  .drop input { display: none; }
+  .actions { display: flex; gap: 12px; justify-content: center; margin: 20px 0; }
+  button { font-size: 15px; padding: 10px 28px; border-radius: 8px; border: 0; cursor: pointer; }
+  #go { background: var(--brand); color: #fff; }
+  #go:disabled { opacity: .5; cursor: not-allowed; }
+  #reset { background: #e6e9ef; color: var(--text); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .hidden { display: none; }
+  .result-top { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+  .score { font-size: 48px; font-weight: 700; line-height: 1; }
+  .score span { font-size: 18px; color: var(--muted); font-weight: 500; }
+  .badge { display: inline-block; padding: 6px 14px; border-radius: 999px; color: #fff; font-weight: 600; font-size: 14px; }
+  .MATCH { background: var(--ok); } .REVIEW { background: var(--warn); } .NO_MATCH { background: var(--bad); }
+  .bar { height: 10px; background: #e6e9ef; border-radius: 6px; overflow: hidden; margin: 16px 0 4px; }
+  .bar div { height: 100%; transition: width .4s; }
+  .faces { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+  .face { border: 1px solid var(--border); border-radius: 10px; padding: 12px; font-size: 13px; }
+  .face img { width: 96px; border-radius: 6px; float: left; margin-right: 12px; }
+  .face ul { margin: 6px 0 0; padding-left: 18px; color: var(--warn); }
+  .meta { color: var(--muted); font-size: 12px; margin-top: 12px; clear: both; }
+  .error { background: #fdecec; color: var(--bad); border-color: #f5c2c2; }
+</style>
+</head>
+<body>
+<header>
+  <h1>FRS SmartScore</h1>
+  <p>Face Recognition match between two images (e.g. selfie vs Aadhaar / PAN / Passport)</p>
+</header>
+<main>
+  <div class="uploads">
+    <label class="drop" id="drop1">
+      <h3>Image 1 - Photo / Selfie</h3>
+      <small>Click or drag & drop (JPG, PNG, max 10 MB)</small>
+      <input type="file" accept="image/*" id="file1">
+      <img id="prev1" class="hidden" alt="">
+    </label>
+    <label class="drop" id="drop2">
+      <h3>Image 2 - ID Card</h3>
+      <small>Aadhaar / PAN / Passport (front side with photo)</small>
+      <input type="file" accept="image/*" id="file2">
+      <img id="prev2" class="hidden" alt="">
+    </label>
+  </div>
+
+  <div class="actions">
+    <button id="go" disabled>Check FRS Score</button>
+    <button id="reset">Reset</button>
+  </div>
+
+  <div id="result" class="card hidden"></div>
+</main>
+
+<script>
+const files = { 1: null, 2: null };
+const $ = id => document.getElementById(id);
+
+function setFile(n, f) {
+  if (!f || !f.type.startsWith("image/")) return;
+  files[n] = f;
+  const img = $("prev" + n);
+  img.src = URL.createObjectURL(f);
+  img.classList.remove("hidden");
+  $("go").disabled = !(files[1] && files[2]);
+}
+
+[1, 2].forEach(n => {
+  const drop = $("drop" + n);
+  $("file" + n).addEventListener("change", e => setFile(n, e.target.files[0]));
+  drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", e => { e.preventDefault(); drop.classList.remove("over"); setFile(n, e.dataTransfer.files[0]); });
+});
+
+$("reset").onclick = () => location.reload();
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const label = { MATCH: "MATCH", REVIEW: "MANUAL REVIEW", NO_MATCH: "NO MATCH" };
+const color = { MATCH: "var(--ok)", REVIEW: "var(--warn)", NO_MATCH: "var(--bad)" };
+
+function faceCard(title, f) {
+  const warn = f.warnings.length ? `<ul>${f.warnings.map(w => `<li>${esc(w)}</li>`).join("")}</ul>` : "";
+  return `<div class="face">
+    ${f.face_thumbnail ? `<img src="${f.face_thumbnail}" alt="">` : ""}
+    <b>${title}</b><br>
+    Faces found: ${f.faces_found}<br>
+    Face size: ${f.face_size_px}px<br>
+    Detection confidence: ${(f.detection_confidence * 100).toFixed(0)}%
+    ${f.rotation_applied ? `<br>Rotated: ${f.rotation_applied}°` : ""}
+    ${warn}
+    <div style="clear:both"></div>
+  </div>`;
+}
+
+$("go").onclick = async () => {
+  const btn = $("go"), box = $("result");
+  btn.disabled = true; btn.textContent = "Checking...";
+  box.className = "card"; box.innerHTML = "Analysing faces...";
+  const fd = new FormData();
+  fd.append("image1", files[1]);
+  fd.append("image2", files[2]);
+  try {
+    const res = await fetch("/api/verify", { method: "POST", body: fd });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.detail || "Request failed");
+    box.innerHTML = `
+      <div class="result-top">
+        <div class="score">${d.frs_score}<span> / 100</span></div>
+        <div><span class="badge ${d.decision}">${label[d.decision]}</span>
+          <div class="meta">Cosine similarity: ${d.cosine_similarity} (match &ge; ${d.thresholds.match}, review &ge; ${d.thresholds.review})</div></div>
+      </div>
+      <div class="bar"><div style="width:${d.frs_score}%;background:${color[d.decision]}"></div></div>
+      <div class="faces">${faceCard("Image 1", d.image1)}${faceCard("Image 2", d.image2)}</div>
+      <div class="meta">Processed in ${d.processing_ms} ms</div>`;
+  } catch (e) {
+    box.className = "card error";
+    box.textContent = e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = "Check FRS Score";
+  }
+};
+</script>
+</body>
+</html>
