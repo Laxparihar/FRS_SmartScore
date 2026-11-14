@@ -12,6 +12,16 @@ verification, comparing a person's selfie with the photo on their Aadhaar card, 
 - Image quality warnings (blurry, dark, small face, multiple faces)
 - Runs fully offline on CPU, so no images are sent to any cloud service
 
+## Screenshots
+
+**Home page:** upload a selfie and an ID card image
+
+![FRS SmartScore home page](screenshot/Home.png)
+
+**Result:** score, decision and the face detected in each image
+
+![FRS SmartScore match result](screenshot/demo.png)
+
 ## Run
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
@@ -42,4 +52,3 @@ Tune them on a set of your own real selfie-vs-ID pairs before go-live.
 ## Licence note
 InsightFace `buffalo_l` model weights are for non-commercial use only. Get a commercial licence
 or swap the model before production use.
-# FRS_SmartScore
